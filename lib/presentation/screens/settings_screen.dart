@@ -151,7 +151,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               children: [
                 Expanded(
                   child: ElevatedButton.icon(
-                    icon: const Icon(Icons.computer),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 12),
+                      textStyle: const TextStyle(
+                          fontFamily: 'Baloo2',
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700),
+                    ),
+                    icon: const Icon(Icons.computer, size: 22),
                     label: const Text('С компьютером'),
                     onPressed: () => _start(GameMode.vsComputer),
                   ),
@@ -161,8 +169,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   child: ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.sky,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 12),
+                      textStyle: const TextStyle(
+                          fontFamily: 'Baloo2',
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700),
                     ),
-                    icon: const Icon(Icons.people),
+                    icon: const Icon(Icons.people, size: 22),
                     label: const Text('Двое'),
                     onPressed: () => _start(GameMode.localTwoPlayers),
                   ),

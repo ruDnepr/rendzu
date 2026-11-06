@@ -36,3 +36,6 @@ node_modules/
 # OS
 .DS_Store
 Thumbs.db
+tool-results/
+download/*.apk
+download/rendzu-debug.apk

@@ -294,13 +294,13 @@ class RenjuAI {
         .toList()
       ..sort((a, b) => b.score.compareTo(a.score));
     final top = scored.take(math.min(10, scored.length)).toList();
-    var bestScore = -0x7fffffffffffffff;
+    var bestScore = -1000000000;
     Point? best = top.first.point;
     for (final c in top) {
       final copy = board.copy();
       copy.place(c.point, color);
       // лучший ответ соперника
-      var oppBest = -0x7fffffffffffffff;
+      var oppBest = -1000000000;
       final oppCands = _generateCandidates(copy, opp, ruleset);
       final oppScored = oppCands
           .map((p) => _Candidate(p, _quickScore(copy, p, opp)))
@@ -350,8 +350,8 @@ class RenjuAI {
       ..sort((a, b) => b.score.compareTo(a.score));
     final top = scored.take(math.min(12, scored.length)).toList();
 
-    var alpha = -0x7fffffffffffffff;
-    final beta = 0x7fffffffffffffff;
+    var alpha = -1000000000;
+    final beta = 1000000000;
     var bestScore = alpha;
     Point? best = top.first.point;
     for (final c in top) {
@@ -402,7 +402,7 @@ class RenjuAI {
 
     final maximizing = current == maximizingColor;
     if (maximizing) {
-      var value = -0x7fffffffffffffff;
+      var value = -1000000000;
       for (final c in top) {
         // быстрый выигрыш
         final copy = board.copy();
@@ -425,7 +425,7 @@ class RenjuAI {
       }
       return value;
     } else {
-      var value = 0x7fffffffffffffff;
+      var value = 1000000000;
       for (final c in top) {
         final copy = board.copy();
         copy.place(c.point, current);

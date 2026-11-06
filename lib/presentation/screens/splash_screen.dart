@@ -53,29 +53,37 @@ class _SplashScreenState extends State<SplashScreen>
             colors: [AppColors.cream, AppColors.creamDark],
           ),
         ),
-        child: Center(
+        child: SafeArea(
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Анимированный камень + мини-доска
+              const Spacer(flex: 2),
+              // Анимированный камень + мини-доска — крупный логотип
               SizedBox(
-                width: 220,
-                height: 220,
+                width: 280,
+                height: 280,
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
-                    // мини-доска 3×3
+                    // мини-доска 5×5
                     Container(
-                      width: 160,
-                      height: 160,
+                      width: 220,
+                      height: 220,
                       decoration: BoxDecoration(
-                        color: AppColors.woodMid,
-                        borderRadius: BorderRadius.circular(16),
+                        gradient: const LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            AppColors.woodLight,
+                            AppColors.woodMid,
+                            AppColors.woodDark,
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(24),
                         boxShadow: const [
                           BoxShadow(
-                            color: Colors.black26,
-                            blurRadius: 12,
-                            offset: Offset(0, 6),
+                            color: Colors.black38,
+                            blurRadius: 18,
+                            offset: Offset(0, 10),
                           ),
                         ],
                       ),
@@ -83,18 +91,18 @@ class _SplashScreenState extends State<SplashScreen>
                         painter: _MiniBoardPainter(),
                       ),
                     ),
-                    // падающий камень
+                    // падающий камень — крупный
                     AnimatedBuilder(
                       animation: _stoneDrop,
                       builder: (context, child) {
-                        final dy = (1 - _stoneDrop.value) * -120;
+                        final dy = (1 - _stoneDrop.value) * -150;
                         return Transform.translate(
                           offset: Offset(0, dy),
                           child: child,
                         );
                       },
                       child: _GlossyStone(
-                        size: 56,
+                        size: 78,
                         color: AppColors.stoneBlack,
                         highlight: AppColors.stoneBlackHi,
                       ),
@@ -102,7 +110,7 @@ class _SplashScreenState extends State<SplashScreen>
                   ],
                 ),
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 40),
               FadeTransition(
                 opacity: _titleFade,
                 child: Column(
@@ -111,32 +119,54 @@ class _SplashScreenState extends State<SplashScreen>
                       'Рэндзю',
                       style: TextStyle(
                         fontFamily: 'Baloo2',
-                        fontSize: 48,
+                        fontSize: 56,
                         fontWeight: FontWeight.w800,
                         color: AppColors.textDark,
+                        height: 1.0,
                       ),
                     ),
                     Text(
                       'для Дианы',
                       style: TextStyle(
                         fontFamily: 'Baloo2',
-                        fontSize: 28,
+                        fontSize: 34,
                         fontWeight: FontWeight.w700,
                         color: AppColors.coral,
+                        height: 1.1,
+                      ),
+                    ),
+                    SizedBox(height: 10),
+                    Text(
+                      'Пять камней в ряд — и победа!',
+                      style: TextStyle(
+                        fontFamily: 'Nunito',
+                        fontSize: 16,
+                        color: AppColors.textMid,
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 48),
+              const Spacer(flex: 2),
               SizedBox(
-                width: 32,
-                height: 32,
+                width: 48,
+                height: 48,
                 child: CircularProgressIndicator(
-                  strokeWidth: 3,
-                  valueColor: AlwaysStoppedAnimation(AppColors.coral.withOpacity(0.5)),
+                  strokeWidth: 4,
+                  valueColor:
+                      const AlwaysStoppedAnimation(AppColors.coral),
                 ),
               ),
+              const Spacer(flex: 1),
+              const Text(
+                'версия 1.0',
+                style: TextStyle(
+                  fontFamily: 'Nunito',
+                  fontSize: 13,
+                  color: AppColors.textLight,
+                ),
+              ),
+              const SizedBox(height: 16),
             ],
           ),
         ),
@@ -152,14 +182,18 @@ class _MiniBoardPainter extends CustomPainter {
       ..color = AppColors.woodLine
       ..strokeWidth = 2
       ..style = PaintingStyle.stroke;
-    // 3 линии × 3 линии → рисуем сетку 3×3
-    const n = 3;
+    // Сетка 5×5 — как настоящая доска рэндзю
+    const n = 5;
     final step = size.width / (n + 1);
     for (var i = 1; i <= n; i++) {
       final p = step * i;
       canvas.drawLine(Offset(p, step), Offset(p, size.height - step), paint);
       canvas.drawLine(Offset(step, p), Offset(size.width - step, p), paint);
     }
+    // центральная звёздная точка
+    final star = Paint()..color = AppColors.woodLine;
+    canvas.drawCircle(
+        Offset(size.width / 2, size.height / 2), 3.5, star);
   }
 
   @override

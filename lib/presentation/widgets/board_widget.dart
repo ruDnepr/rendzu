@@ -75,7 +75,7 @@ class _BoardWidgetState extends State<BoardWidget>
             math.min(constraints.maxWidth, constraints.maxHeight).clamp(220.0, 520.0);
         final boardPx = maxSize.toDouble();
         final cell = boardPx / widget.board.size;
-        final tilt = widget.enableTilt ? -0.12 : 0.0;
+        final tilt = widget.enableTilt ? -0.06 : 0.0;
         return Center(
           child: Stack(
             alignment: Alignment.center,

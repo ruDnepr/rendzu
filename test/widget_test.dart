@@ -9,7 +9,7 @@ void main() {
     await tester.pumpWidget(const ProviderScope(child: RendzuApp()));
     // один кадр без ожидания навигации
     await tester.pump();
-    expect(find.text('Рэндзю'), findsOneWidget);
-    expect(find.text('для Дианы'), findsOneWidget);
+    expect(find.text('Рэндзю\nдля Дианы'), findsOneWidget);
+    expect(find.text('Пять камней в ряд — и победа!'), findsOneWidget);
   });
 }

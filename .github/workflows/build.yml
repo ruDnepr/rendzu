@@ -7,14 +7,15 @@ on:
     tags: ['v*']
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
   build:
     name: Test & Build APK
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     permissions:
-      contents: write   # для создания Release при теге
+      contents: write
       actions: write
 
     steps:
@@ -45,11 +46,11 @@ jobs:
       - name: Tests
         run: flutter test
 
-      # Debug APK — устанавливается на любое Android-устройство с "unknown sources".
+      # Debug APK — устанавливается на любое Android-устройство.
       - name: Build debug APK
         run: flutter build apk --debug
 
-      - name: Upload debug APK artifact
+      - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
           name: rendzu-debug-apk
@@ -57,12 +58,20 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-      # При теге v* — собираем release APK (debug-signed, годится для установки)
-      # и публикуем GitHub Release с прикреплённым APK.
-      - name: Build release APK (на теге)
-        if: startsWith(github.ref, 'refs/tags/v')
+      # Release APK — оптимизированный, меньший по размеру (R8, tree-shaking).
+      # Подписан debug-ключом (годится для установки; для Google Play нужен свой keystore).
+      - name: Build release APK
         run: flutter build apk --release
 
+      - name: Upload release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: rendzu-release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      # При теге v* — создаём GitHub Release с обоими APK.
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2

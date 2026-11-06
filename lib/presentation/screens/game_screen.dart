@@ -9,7 +9,7 @@ import 'package:rendzu/domain/rules/pattern_detector.dart';
 import 'package:rendzu/presentation/providers/game_provider.dart';
 import 'package:rendzu/presentation/widgets/board_widget.dart';
 
-/// Экран игры: доска + HUD + контролы + диалоги победы/предупреждения.
+/// Экран игры: доска + HUD + контролы + диалог победы с указанием ходa.
 class GameScreen extends ConsumerStatefulWidget {
   const GameScreen({super.key});
 
@@ -20,6 +20,7 @@ class GameScreen extends ConsumerStatefulWidget {
 class _GameScreenState extends ConsumerState<GameScreen> {
   Point? _hintMove;
   bool _showHint = false;
+  bool _dialogShown = false;
 
   @override
   void initState() {
@@ -36,10 +37,17 @@ class _GameScreenState extends ConsumerState<GameScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(gameControllerProvider);
     if (state == null) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return Scaffold(
+        body: AppBackground(
+          child: Center(
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation(purple.withOpacity(.6)),
+            ),
+          ),
+        ),
+      );
     }
     final cfg = state.config;
-    // Вычисляем подсветку паттернов для текущего игрока, если включено.
     var threes = const <List<Point>>[];
     var fours = const <List<Point>>[];
     if (cfg.patternHighlightEnabled && !state.gameOver) {
@@ -47,66 +55,77 @@ class _GameScreenState extends ConsumerState<GameScreen> {
       threes = mine.threes;
       fours = mine.fours;
     }
+
+    // показать победу/ничью один раз
+    if (state.gameOver && !_dialogShown) {
+      _dialogShown = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _showResult(state);
+      });
+    }
+
     return Scaffold(
       appBar: AppBar(
-        title: Text('${cfg.ruleset.russianName} • ${cfg.boardSize.russianName}',
-            style: const TextStyle(fontSize: 18)),
+        title: Text(
+          '${cfg.ruleset.russianName} · ${cfg.boardSize.russianName}',
+          style: const TextStyle(fontSize: 17),
+        ),
         actions: [
           IconButton(
             tooltip: 'Подсказка',
-            icon: const Icon(Icons.lightbulb_outline),
+            icon: const Icon(Icons.lightbulb_outline_rounded),
             onPressed: state.gameOver
                 ? null
                 : () {
-                    final p = ref.read(gameControllerProvider.notifier).hint();
+                    final p =
+                        ref.read(gameControllerProvider.notifier).hint();
                     setState(() {
                       _hintMove = p;
                       _showHint = true;
                     });
                     Future<void>.delayed(const Duration(seconds: 3), () {
-                      if (mounted) {
-                        setState(() => _showHint = false);
-                      }
+                      if (mounted) setState(() => _showHint = false);
                     });
                   },
           ),
           IconButton(
             tooltip: 'Заново',
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh_rounded),
             onPressed: () => _confirmRestart(context),
           ),
         ],
       ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            _Hud(state: state),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(8),
-                child: BoardWidget(
-                  board: state.board,
-                  lastMove: state.lastMove,
-                  winningLine: state.winningLine,
-                  forbiddenHints: state.forbiddenHints,
-                  patternThrees: threes,
-                  patternFours: fours,
-                  hintMove: _showHint ? _hintMove : null,
-                  showForbiddenHints: cfg.hintsEnabled,
-                  showPatterns: cfg.patternHighlightEnabled,
-                  onTapIntersection: _onTap,
+      body: AppBackground(
+        child: SafeArea(
+          child: Column(
+            children: [
+              _Hud(state: state),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: BoardWidget(
+                    board: state.board,
+                    lastMove: state.lastMove,
+                    winningLine: state.winningLine,
+                    forbiddenHints: state.forbiddenHints,
+                    patternThrees: threes,
+                    patternFours: fours,
+                    hintMove: _showHint ? _hintMove : null,
+                    showForbiddenHints: cfg.hintsEnabled,
+                    showPatterns: cfg.patternHighlightEnabled,
+                    onTapIntersection: _onTap,
+                  ),
                 ),
               ),
-            ),
-            _Controls(
-              canUndo: state.config.mode.isOffline &&
-                  state.history.isNotEmpty &&
-                  !state.gameOver,
-              onUndo: () =>
-                  ref.read(gameControllerProvider.notifier).undo(),
-              onResign: () => _confirmResign(context),
-            ),
-          ],
+              _Controls(
+                canUndo: state.config.mode.isOffline &&
+                    state.history.isNotEmpty &&
+                    !state.gameOver,
+                onUndo: () => ref.read(gameControllerProvider.notifier).undo(),
+                onResign: () => _confirmResign(context),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -115,7 +134,6 @@ class _GameScreenState extends ConsumerState<GameScreen> {
   void _onTap(Point p) {
     ref.read(gameControllerProvider.notifier).placeStone(p);
     setState(() => _showHint = false);
-    // показать предупреждение, если был запрещённый ход
     final s = ref.read(gameControllerProvider);
     if (s?.warning != null && mounted) {
       final msg = s!.warning!;
@@ -123,18 +141,12 @@ class _GameScreenState extends ConsumerState<GameScreen> {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(msg, style: const TextStyle(fontFamily: 'Nunito')),
-            backgroundColor: AppColors.coralDark,
+            content: Text(msg),
+            backgroundColor: const Color(0xFFE27D60),
             duration: const Duration(seconds: 4),
           ),
         );
         ref.read(gameControllerProvider.notifier).clearWarning();
-      });
-    }
-    // показать победу/ничью
-    if (s != null && s.gameOver && mounted) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _showEndDialog(s);
       });
     }
   }
@@ -147,21 +159,16 @@ class _GameScreenState extends ConsumerState<GameScreen> {
       if (board.at(pt) != color) continue;
       for (final axis in Direction.axes) {
         if (PatternDetector.isOpenFourRun(board, pt, axis)) {
-          // четвёрка
           final pos = PatternDetector.runPositions(board, pt, axis);
           if (!fours.any((l) => _sameSet(l, pos))) fours.add(pos);
         }
-        // открытая тройка: серия из 3 с открытыми концами
         final len = PatternDetector.runLengthThrough(board, pt, axis);
         if (len == 3) {
-          // проверим открытость (похожая логика)
           final (start, end) = PatternDetector.runBounds(board, pt, axis);
           final before = start.step(axis.opposite);
           final after = end.step(axis);
-          final be =
-              before.inBounds(board.size) && board.at(before) == null;
-          final ae =
-              after.inBounds(board.size) && board.at(after) == null;
+          final be = before.inBounds(board.size) && board.at(before) == null;
+          final ae = after.inBounds(board.size) && board.at(after) == null;
           if (be && ae) {
             final pos = PatternDetector.runPositions(board, pt, axis);
             if (!threes.any((l) => _sameSet(l, pos))) threes.add(pos);
@@ -179,171 +186,189 @@ class _GameScreenState extends ConsumerState<GameScreen> {
   }
 
   void _confirmRestart(BuildContext context) {
-    showDialog<void>(
+    showDianaDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Начать заново?'),
-        content: const Text('Текущая партия будет потеряна.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Отмена'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              final cfg = ref.read(gameConfigProvider);
-              if (cfg != null) {
-                ref.read(gameControllerProvider.notifier).startGame(cfg);
-              }
-            },
-            child: const Text('Заново'),
-          ),
-        ],
-      ),
-    );
+      title: 'Начать заново?',
+      content: const Text('Текущая партия будет потеряна.',
+          textAlign: TextAlign.center, style: dialogTextStyle),
+      actions: const [
+        DianaDialogButton<bool>(label: 'Отмена', value: false),
+        DianaDialogButton<bool>(
+            label: 'Заново', value: true, primary: true),
+      ],
+    ).then((ok) {
+      if (ok == true) {
+        final cfg = ref.read(gameConfigProvider);
+        if (cfg != null) {
+          setState(() => _dialogShown = false);
+          ref.read(gameControllerProvider.notifier).startGame(cfg);
+        }
+      }
+    });
   }
 
   void _confirmResign(BuildContext context) {
-    showDialog<void>(
+    showDianaDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Сдаться?'),
-        content: const Text('Ты проиграешь эту партию.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Отмена'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.coralDark),
-            onPressed: () {
-              Navigator.pop(ctx);
-              ref.read(gameControllerProvider.notifier).resign();
-            },
-            child: const Text('Сдаюсь'),
-          ),
-        ],
-      ),
-    );
+      title: 'Сдаться?',
+      content: const Text('Ты проиграешь эту партию.',
+          textAlign: TextAlign.center, style: dialogTextStyle),
+      actions: const [
+        DianaDialogButton<bool>(label: 'Отмена', value: false),
+        DianaDialogButton<bool>(
+            label: 'Сдаюсь', value: true, primary: true),
+      ],
+    ).then((ok) {
+      if (ok == true) {
+        ref.read(gameControllerProvider.notifier).resign();
+      }
+    });
   }
 
-  void _showEndDialog(GameState s) {
-    final winner = s.winner?.winner;
-    final cfg = s.config;
+  /// Диалог результата: чётко показывает, каким ходом и кто победил.
+  Future<void> _showResult(GameState state) async {
+    final winner = state.winner?.winner;
+    final cfg = state.config;
+    final lastMove = state.lastMove;
+    final line = state.winningLine;
+    final moveNo = state.history.length;
+
     String title;
     String message;
+    bool calm = false;
     if (winner == null) {
       title = 'Ничья!';
       message = 'Доска заполнена, никто не собрал пять. Попробуем ещё раз?';
+      calm = true;
     } else {
-      final humanWon = cfg.mode != GameMode.vsComputer ||
-          winner == cfg.humanColor;
+      final humanWon =
+          cfg.mode != GameMode.vsComputer || winner == cfg.humanColor;
       if (cfg.mode == GameMode.vsComputer) {
-        title = humanWon ? 'Победа! 🎉' : 'Компьютер выиграл';
-        message = humanWon
-            ? 'Отличная игра! Ты собрал пять в ряд!'
-            : 'Не расстраивайся, в следующий раз получится!';
+        title = humanWon ? 'Ты молодец!' : 'Отличная партия!';
       } else {
-        title = 'Победа: ${winner.russianName}! 🎉';
-        message = 'Пять в ряд — победа!';
+        title = '${winner.russianName} победили!';
+      }
+      // Описание победного хода.
+      final direction = _describeDirection(line);
+      final pointStr = lastMove != null
+          ? 'ходом №$moveNo в клетку (${lastMove.x + 1}, ${lastMove.y + 1})'
+          : 'последним ходом';
+      if (cfg.mode == GameMode.vsComputer && humanWon) {
+        message = 'Ты собрал пять в ряд — $direction, $pointStr. Так держать!';
+      } else if (cfg.mode == GameMode.vsComputer && !humanWon) {
+        message = 'Компьютер собрал пять в ряд — $direction, $pointStr. '
+            'В следующий раз обязательно получится!';
+      } else {
+        message = '${winner.russianName} собрали пять в ряд — $direction, '
+            '$pointStr. Здорово сыграно!';
       }
     }
-    showDialog<void>(
+
+    final choice = await showDianaDialog<_ResultChoice>(
       context: context,
+      title: title,
       barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        title: Text(title, style: const TextStyle(fontFamily: 'Baloo2')),
-        content: Text(message),
-        actions: [
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(ctx); // закрыть диалог
-              Navigator.of(context).pop(); // выйти из игры в меню
-            },
-            child: const Text('В меню'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.sky),
-            onPressed: () {
-              Navigator.pop(ctx);
-              final cfg2 = ref.read(gameConfigProvider);
-              if (cfg2 != null) {
-                ref.read(gameControllerProvider.notifier).startGame(cfg2);
-              }
-            },
-            child: const Text('Ещё раз'),
-          ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Celebration(calm: calm),
+          const SizedBox(height: 14),
+          Text(message,
+              textAlign: TextAlign.center, style: dialogTextStyle),
         ],
       ),
+      actions: [
+        const DianaDialogButton<_ResultChoice>(
+            label: 'Играть снова', value: _ResultChoice.again, primary: true),
+        if (state.config.mode.isOffline && state.history.isNotEmpty)
+          const DianaDialogButton<_ResultChoice>(
+              label: 'Отменить ход', value: _ResultChoice.undo),
+        const DianaDialogButton<_ResultChoice>(
+            label: 'В меню', value: _ResultChoice.home),
+      ],
     );
+    if (!mounted) return;
+    switch (choice) {
+      case _ResultChoice.again:
+        final cfg2 = ref.read(gameConfigProvider);
+        if (cfg2 != null) {
+          setState(() => _dialogShown = false);
+          ref.read(gameControllerProvider.notifier).startGame(cfg2);
+        }
+      case _ResultChoice.undo:
+        setState(() => _dialogShown = false);
+        ref.read(gameControllerProvider.notifier).undo();
+      case _ResultChoice.home:
+        Navigator.of(context).popUntil((r) => r.settings.name == '/menu');
+      case null:
+        break;
+    }
+  }
+
+  /// Человеческое описание направления победной линии.
+  String _describeDirection(List<Point> line) {
+    if (line.length < 2) return 'пять в ряд';
+    final a = line.first;
+    final b = line.last;
+    final dx = b.x - a.x;
+    final dy = b.y - a.y;
+    if (dy == 0) return 'по горизонтали';
+    if (dx == 0) return 'по вертикали';
+    if ((dx > 0 && dy > 0) || (dx < 0 && dy < 0)) return 'по диагонали ↘';
+    return 'по диагонали ↗';
   }
 }
 
-/// Верхний HUD: кто ходит, чей цвет, номер хода.
+enum _ResultChoice { again, undo, home }
+
+/// Верхний HUD: кто ходит, цвет, номер хода.
 class _Hud extends StatelessWidget {
   const _Hud({required this.state});
   final GameState state;
 
   @override
   Widget build(BuildContext context) {
-    final s = state;
-    final current = s.currentColor;
+    final current = state.currentColor;
     final isBlack = current == StoneColor.black;
-    final cfg = s.config;
+    final cfg = state.config;
     final isVsComputer = cfg.mode == GameMode.vsComputer;
     final humanTurn = !isVsComputer || current == cfg.humanColor;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       child: Row(
         children: [
-          _PlayerChip(
-            color: StoneColor.black,
-            active: isBlack,
-            label: _labelFor(StoneColor.black, cfg),
-          ),
+          _PlayerChip(color: StoneColor.black, active: isBlack),
           const Spacer(),
           Column(
             children: [
-              Text('Ход ${s.history.length + (s.gameOver ? 0 : 1)}',
-                  style: Theme.of(context).textTheme.bodyMedium),
+              Text('Ход ${state.history.length + (state.gameOver ? 0 : 1)}',
+                  style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w900,
+                      color: muted)),
               if (isVsComputer)
-                Text(humanTurn ? 'Твой ход' : 'Думает компьютер…',
-                    style: TextStyle(
-                      fontFamily: 'Baloo2',
-                      color: humanTurn ? AppColors.grass : AppColors.coral,
-                      fontWeight: FontWeight.w700,
-                    )),
+                Text(
+                  humanTurn ? 'Твой ход' : 'Думает компьютер…',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                    color: humanTurn ? purple : const Color(0xFFE27D60),
+                  ),
+                ),
             ],
           ),
           const Spacer(),
-          _PlayerChip(
-            color: StoneColor.white,
-            active: !isBlack,
-            label: _labelFor(StoneColor.white, cfg),
-          ),
+          _PlayerChip(color: StoneColor.white, active: !isBlack),
         ],
       ),
     );
   }
-
-  String _labelFor(StoneColor color, GameConfig cfg) {
-    if (cfg.mode == GameMode.vsComputer) {
-      return color == cfg.humanColor ? 'Ты' : 'Компьютер';
-    }
-    return color == StoneColor.black ? 'Игрок 1' : 'Игрок 2';
-  }
 }
 
 class _PlayerChip extends StatelessWidget {
-  const _PlayerChip({
-    required this.color,
-    required this.active,
-    required this.label,
-  });
+  const _PlayerChip({required this.color, required this.active});
   final StoneColor color;
   final bool active;
-  final String label;
 
   @override
   Widget build(BuildContext context) {
@@ -352,11 +377,11 @@ class _PlayerChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: active
-            ? AppColors.sunflower.withOpacity(0.35)
-            : AppColors.warmWhite,
+            ? yellow.withOpacity(.30)
+            : Colors.white.withOpacity(.82),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: active ? AppColors.sunflower : AppColors.textLight,
+          color: active ? yellow : const Color(0xFFE3D8F5),
           width: active ? 2.5 : 1,
         ),
       ),
@@ -371,18 +396,17 @@ class _PlayerChip extends StatelessWidget {
               gradient: RadialGradient(
                 center: const Alignment(-0.3, -0.3),
                 colors: color == StoneColor.black
-                    ? const [AppColors.stoneBlackHi, AppColors.stoneBlack]
-                    : const [Colors.white, AppColors.stoneWhite],
+                    ? const [stoneBlackHi, stoneBlack]
+                    : const [Colors.white, stoneWhite],
               ),
             ),
           ),
           const SizedBox(width: 8),
-          Text(label,
-              style: TextStyle(
-                fontFamily: 'Baloo2',
-                fontWeight: FontWeight.w700,
-                color: AppColors.textDark,
-              )),
+          Text(
+            color == StoneColor.black ? 'Чёрные' : 'Белые',
+            style: const TextStyle(
+                fontSize: 14, fontWeight: FontWeight.w900, color: ink),
+          ),
         ],
       ),
     );
@@ -408,14 +432,14 @@ class _Controls extends StatelessWidget {
         children: [
           TextButton.icon(
             onPressed: canUndo ? onUndo : null,
-            icon: const Icon(Icons.undo),
+            icon: const Icon(Icons.undo_rounded),
             label: const Text('Отменить'),
           ),
           TextButton.icon(
             onPressed: onResign,
             icon: const Icon(Icons.flag_outlined),
             label: const Text('Сдаться'),
-            style: TextButton.styleFrom(foregroundColor: AppColors.coralDark),
+            style: TextButton.styleFrom(foregroundColor: const Color(0xFFE27D60)),
           ),
         ],
       ),

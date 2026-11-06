@@ -1,77 +1,61 @@
 import 'package:flutter/material.dart';
 import 'package:rendzu/core/theme/app_theme.dart';
 
-/// Экран «Правила»: общие принципы, гомоку, рэндзю (с запрещёнными ходами),
-/// упрощения для ребёнка.
+/// Экран «Правила» — наследует оформление «Шашек для Дианы».
 class RulesScreen extends StatelessWidget {
   const RulesScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Правила')),
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: const [
-            _RuleCard(
-              icon: Icons.info,
-              color: AppColors.sky,
-              title: 'Как играть',
-              body: [
-                'Двое игроков ставят камни по очереди на пересечения линий.',
-                'Чёрные ходят первыми.',
-                'Цель — первым построить ряд из пяти своих камней по '
-                    'горизонтали, вертикали или диагонали.',
-              ],
-            ),
-            _RuleCard(
-              icon: Icons.check_circle,
-              color: AppColors.grass,
-              title: 'Гомоку (простые правила)',
-              body: [
-                'Побеждает тот, кто первым построит пять камней в ряд '
-                    '(или больше — оверлайн тоже считается победой).',
-                'Запрещённых ходов нет ни у кого.',
-                'Это режим по умолчанию — отлично подходит для начала!',
-              ],
-            ),
-            _RuleCard(
-              icon: Icons.warning,
-              color: AppColors.coral,
-              title: 'Рэндзю (для чёрных есть запреты)',
-              body: [
-                'Чёрные побеждают ТОЛЬКО ровно пятью камнями. Шесть и больше '
-                    '(оверлайн) — НЕ победа для чёрных, а запрещённый ход.',
-                'Белые побешдают пятью и более камнями.',
-                'Запрещено чёрным создавать одновременно:',
-                '• Двойное три (3-3) — два «три» одним ходом.',
-                '• Двойное четыре (4-4) — два «четыре» одним ходом.',
-                '• Оверлайн — шесть и больше в ряд.',
-                '«Три» — три камня, к которым можно добавить один и получить '
-                    'открытую четвёрку (с двух сторон).',
-                '«Четыре» — четыре камня, к которым можно добавить один и '
-                    'получить пять.',
-                'Исключение: если чёрные делают запрещённый ход И одновременно '
-                    'строят ровно пять — это победа чёрных!',
-              ],
-            ),
-            _RuleCard(
-              icon: Icons.child_care,
-              color: AppColors.sunflower,
-              title: 'Помощь для тебя',
-              body: [
-                'Доска 9×9 по умолчанию — быстрее и понятнее.',
-                'Включи подсказки: приложение подсветит тройки и четвёрки, '
-                    'покажет хорошие ходы.',
-                'Если ты играешь чёрными в рэндзю и пробуешь сделать '
-                    'запрещённый ход — приложение не даст его сделать и '
-                    'объяснит почему. Ты не проиграешь случайно!',
-                'Можно отменить последний ход (кнопка «Отменить»).',
-              ],
-            ),
-          ],
-        ),
+    return PageFrame(
+      title: 'Правила',
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
+        children: const [
+          Intro(
+            eyebrow: 'КАК ИГРАТЬ ✦',
+            title: 'Пять в ряд',
+            subtitle: 'Ставь камни на пересечения линий и собери пять подряд.',
+          ),
+          SizedBox(height: 18),
+          _RuleCard(
+            icon: Icons.check_circle_rounded,
+            color: purple,
+            title: 'Гомоку (просто)',
+            lines: [
+              'Первым построил пять камней в ряд — победа.',
+              'Шесть и больше (оверлайн) тоже считается победой.',
+              'Запрещённых ходов нет — отличный режим для начала.',
+            ],
+          ),
+          _RuleCard(
+            icon: Icons.warning_rounded,
+            color: const Color(0xFFE27D60),
+            title: 'Рэндзю (запреты для чёрных)',
+            lines: [
+              'Чёрные побеждают ТОЛЬКО ровно пятью. Шесть+ — не победа, а запрет.',
+              'Белые побеждают пятью и более.',
+              'Чёрным нельзя создавать одним ходом:',
+              '• двойное три (3-3) — два «три» сразу;',
+              '• двойное четыре (4-4) — два «четыре» сразу;',
+              '• оверлайн — шесть и больше в ряд.',
+              '«Три» — три камня, достроив которые до открытой четвёрки.',
+              '«Четыре» — четыре камня, достроив которые до пяти.',
+              'Исключение: запрещённый ход, который одновременно строит ровно пять, — победа чёрных.',
+            ],
+          ),
+          _RuleCard(
+            icon: Icons.child_care_rounded,
+            color: const Color(0xFFF4CB67),
+            title: 'Помощь для тебя',
+            lines: [
+              'Доска 9×9 по умолчанию — быстрее и понятнее.',
+              'Включи подсказки: подсветим тройки, четвёрки и хорошие ходы.',
+              'Запрещённый ход не дадим сделать — объясним, почему.',
+              'Можно отменить последний ход кнопкой «Отменить».',
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -82,50 +66,75 @@ class _RuleCard extends StatelessWidget {
     required this.icon,
     required this.color,
     required this.title,
-    required this.body,
+    required this.lines,
   });
   final IconData icon;
   final Color color;
   final String title;
-  final List<String> body;
+  final List<String> lines;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                CircleAvatar(
-                  backgroundColor: color,
-                  child: Icon(icon, color: Colors.white),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(.92),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: const Color(0xFFF2EAE3)),
+        boxShadow: [
+          BoxShadow(
+            color: ink.withOpacity(.05),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: color,
+                  borderRadius: BorderRadius.circular(14),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(title,
-                      style: Theme.of(context).textTheme.headlineSmall),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            ...body.map((line) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('•  ', style: TextStyle(color: color, fontSize: 16)),
-                      Expanded(
-                        child: Text(line,
-                            style: Theme.of(context).textTheme.bodyLarge),
-                      ),
-                    ],
+                child: Icon(icon, color: Colors.white, size: 26),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(title,
+                    style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                        color: ink)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ...lines.map(
+            (line) => Padding(
+              padding: const EdgeInsets.symmetric(vertical: 3),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('•  ', style: TextStyle(color: color, fontSize: 15)),
+                  Expanded(
+                    child: Text(line,
+                        style: const TextStyle(
+                            fontSize: 14,
+                            height: 1.35,
+                            fontWeight: FontWeight.w700,
+                            color: muted)),
                   ),
-                )),
-          ],
-        ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -17,7 +17,7 @@ class RendzuApp extends ConsumerWidget {
     return MaterialApp(
       title: 'Рэндзю для Дианы',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.light,
+      theme: dianaTheme(),
       initialRoute: '/splash',
       routes: {
         '/splash': (context) => const SplashScreen(),

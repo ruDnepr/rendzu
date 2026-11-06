@@ -5,8 +5,9 @@ import 'package:rendzu/core/theme/app_theme.dart';
 import 'package:rendzu/domain/models/board.dart';
 import 'package:rendzu/domain/models/point.dart';
 
-/// Виджет доски с объёмными камнями, тёплой деревянной фактурой и лёгким
-/// 3D-наклоном. Камни ставятся на пересечения линий.
+/// Виджет доски рэндзю: тёплая деревянная фактура (как в шашках), сетка
+/// пересечений, звёздные точки, объёмные камни с бликом. Камни ставятся на
+/// пересечения и НЕ перекрывают друг друга (радиус < половины клетки).
 class BoardWidget extends StatefulWidget {
   const BoardWidget({
     super.key,
@@ -55,7 +56,6 @@ class _BoardWidgetState extends State<BoardWidget>
   @override
   void didUpdateWidget(covariant BoardWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // если появился новый последний ход — проиграть анимацию постановки
     if (widget.lastMove != null && widget.lastMove != oldWidget.lastMove) {
       _placeCtrl.forward(from: 0.0);
     }
@@ -71,16 +71,16 @@ class _BoardWidgetState extends State<BoardWidget>
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final maxSize =
-            math.min(constraints.maxWidth, constraints.maxHeight).clamp(220.0, 520.0);
+        final maxSize = math
+            .min(constraints.maxWidth, constraints.maxHeight)
+            .clamp(220.0, 520.0);
         final boardPx = maxSize.toDouble();
         final cell = boardPx / widget.board.size;
-        final tilt = widget.enableTilt ? -0.06 : 0.0;
+        final tilt = widget.enableTilt ? -0.05 : 0.0;
         return Center(
           child: Stack(
             alignment: Alignment.center,
             children: [
-              // тень под доской
               if (widget.enableTilt)
                 Transform.translate(
                   offset: Offset(0, boardPx * 0.42),
@@ -89,7 +89,7 @@ class _BoardWidgetState extends State<BoardWidget>
                     height: boardPx * 0.14,
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(boardPx * 0.07),
-                      color: Colors.black.withOpacity(0.18),
+                      color: Colors.black.withOpacity(0.16),
                     ),
                   ),
                 ),
@@ -101,7 +101,7 @@ class _BoardWidgetState extends State<BoardWidget>
                       ..rotateX(tilt))
                     : Matrix4.identity(),
                 child: GestureDetector(
-                  onTapDown: (details) => _handleTap(details, boardPx, cell),
+                  onTapDown: (d) => _handleTap(d, cell),
                   child: SizedBox(
                     width: boardPx,
                     height: boardPx,
@@ -114,18 +114,13 @@ class _BoardWidgetState extends State<BoardWidget>
                         forbiddenHints: widget.showForbiddenHints
                             ? widget.forbiddenHints
                             : const {},
-                        patternThrees:
-                            widget.showPatterns ? widget.patternThrees : const [],
-                        patternFours:
-                            widget.showPatterns ? widget.patternFours : const [],
+                        patternThrees: widget.showPatterns
+                            ? widget.patternThrees
+                            : const [],
+                        patternFours: widget.showPatterns
+                            ? widget.patternFours
+                            : const [],
                         hintMove: widget.hintMove,
-                      ),
-                      child: AnimatedBuilder(
-                        animation: _placeCtrl,
-                        builder: (context, _) {
-                          // лёгкая пульсация последнего камня
-                          return const SizedBox.expand();
-                        },
                       ),
                     ),
                   ),
@@ -138,7 +133,7 @@ class _BoardWidgetState extends State<BoardWidget>
     );
   }
 
-  void _handleTap(TapDownDetails details, double boardPx, double cell) {
+  void _handleTap(TapDownDetails details, double cell) {
     final local = details.localPosition;
     final ix = ((local.dx / cell) - 0.5).round();
     final iy = ((local.dy / cell) - 0.5).round();
@@ -170,22 +165,25 @@ class _BoardPainter extends CustomPainter {
   final List<List<Point>> patternFours;
   final Point? hintMove;
 
-  Offset centerOf(Point p) =>
-      Offset(cell * (p.x + 0.5), cell * (p.y + 0.5));
+  // Радиус камня — строго меньше половины клетки, чтобы соседние камни
+  // не перекрывали друг друга.
+  static const double _stoneRadiusFactor = 0.40;
+
+  Offset centerOf(Point p) => Offset(cell * (p.x + 0.5), cell * (p.y + 0.5));
 
   @override
   void paint(Canvas canvas, Size size) {
-    // 1. Деревянный фон с градиентом.
+    // 1. Деревянный фон (тёплая палитра как в шашках).
     final bgRect = Rect.fromLTWH(0, 0, size.width, size.height);
     final bgPaint = Paint()
-      ..shader = LinearGradient(
+      ..shader = const LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
-        colors: const [AppColors.woodLight, AppColors.woodMid, AppColors.woodDark],
+        colors: [boardWoodLight, boardWoodDark],
       ).createShader(bgRect);
     canvas.drawRect(bgRect, bgPaint);
 
-    // лёгкая текстура: несколько горизонтальных полос
+    // лёгкая текстура-полосы
     final grainPaint = Paint()
       ..color = Colors.black.withOpacity(0.04)
       ..style = PaintingStyle.stroke
@@ -195,135 +193,134 @@ class _BoardPainter extends CustomPainter {
       canvas.drawLine(Offset(0, y), Offset(size.width, y), grainPaint);
     }
 
-    // 2. Сетка линий.
+    // 2. Сетка линий (камни на пересечениях).
     final linePaint = Paint()
-      ..color = AppColors.woodLine
+      ..color = const Color(0xFFF0D9A8)
       ..strokeWidth = board.size <= 9 ? 1.6 : 1.1
       ..style = PaintingStyle.stroke;
-
     final first = centerOf(const Point(0, 0));
     final last = centerOf(Point(board.size - 1, board.size - 1));
     for (var i = 0; i < board.size; i++) {
-      final c = centerOf(Point(i, 0));
-      canvas.drawLine(Offset(c.dx, first.dy), Offset(c.dx, last.dy), linePaint);
-      final ri = centerOf(Point(0, i)).dy;
-      canvas.drawLine(Offset(first.dx, ri), Offset(last.dx, ri), linePaint);
+      final cx = centerOf(Point(i, 0)).dx;
+      canvas.drawLine(Offset(cx, first.dy), Offset(cx, last.dy), linePaint);
+      final ry = centerOf(Point(0, i)).dy;
+      canvas.drawLine(Offset(first.dx, ry), Offset(last.dx, ry), linePaint);
     }
 
-    // 3. Звёздные точки (как в го) — для ориентации.
-    final starPaint = Paint()..color = AppColors.woodLine;
+    // 3. Звёздные точки (как в го).
+    final starPaint = Paint()..color = const Color(0xFFF0D9A8);
     for (final p in _starPoints(board.size)) {
       canvas.drawCircle(centerOf(p), board.size <= 9 ? 3.0 : 3.5, starPaint);
     }
 
-    // 4. Подсветка паттернов (тройки — жёлтые, четвёрки — красные).
+    // 4. Подсветка паттернов: тройки (жёлтые), четвёрки (красноватые).
     if (patternThrees.isNotEmpty) {
-      final p = Paint()
-        ..color = AppColors.hintThree
-        ..style = PaintingStyle.fill;
+      final p = Paint()..color = yellow.withOpacity(.35);
       for (final line in patternThrees) {
         for (final pt in line) {
-          canvas.drawCircle(centerOf(pt), cell * 0.46, p);
+          canvas.drawCircle(centerOf(pt), cell * 0.44, p);
         }
       }
     }
     if (patternFours.isNotEmpty) {
-      final p = Paint()
-        ..color = AppColors.hintFour
-        ..style = PaintingStyle.fill;
+      final p = Paint()..color = const Color(0xFFE27D60).withOpacity(.35);
       for (final line in patternFours) {
         for (final pt in line) {
-          canvas.drawCircle(centerOf(pt), cell * 0.46, p);
+          canvas.drawCircle(centerOf(pt), cell * 0.44, p);
         }
       }
     }
 
     // 5. Подсказка хода.
     if (hintMove != null) {
-      final p = Paint()
-        ..color = AppColors.hintMove
-        ..style = PaintingStyle.fill;
-      canvas.drawCircle(centerOf(hintMove!), cell * 0.42, p);
+      final p = Paint()..color = purple.withOpacity(.35);
+      canvas.drawCircle(centerOf(hintMove!), cell * 0.40, p);
+      canvas.drawCircle(
+          centerOf(hintMove!), cell * 0.18, Paint()..color = lilac);
     }
 
     // 6. Камни.
+    final stoneR = cell * _stoneRadiusFactor;
     for (final pt in board.occupiedPoints()) {
-      _drawStone(canvas, centerOf(pt), cell * 0.46, board.at(pt)!,
-          isLast: pt == lastMove);
+      _drawStone(canvas, centerOf(pt), stoneR, board.at(pt)!);
     }
 
     // 7. Маркеры запрещённых ходов (крестик).
     if (forbiddenHints.isNotEmpty) {
       final paint = Paint()
-        ..color = AppColors.forbiddenMarker
+        ..color = const Color(0xFFE27D60)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 3
         ..strokeCap = StrokeCap.round;
-      final r = cell * 0.22;
+      final r = cell * 0.20;
       for (final p in forbiddenHints) {
         final c = centerOf(p);
-        canvas.drawLine(Offset(c.dx - r, c.dy - r), Offset(c.dx + r, c.dy + r), paint);
-        canvas.drawLine(Offset(c.dx - r, c.dy + r), Offset(c.dx + r, c.dy - r), paint);
+        canvas.drawLine(
+            Offset(c.dx - r, c.dy - r), Offset(c.dx + r, c.dy + r), paint);
+        canvas.drawLine(
+            Offset(c.dx - r, c.dy + r), Offset(c.dx + r, c.dy - r), paint);
       }
     }
 
     // 8. Кольцо последнего хода.
     if (lastMove != null && !winningLine.contains(lastMove)) {
       final ring = Paint()
-        ..color = AppColors.lastMoveRing
+        ..color = yellow
         ..style = PaintingStyle.stroke
         ..strokeWidth = 3;
-      canvas.drawCircle(centerOf(lastMove!), cell * 0.52, ring);
+      canvas.drawCircle(centerOf(lastMove!), cell * 0.46, ring);
     }
 
     // 9. Победная линия — подсветка.
     if (winningLine.length >= 2) {
       final winPaint = Paint()
-        ..color = AppColors.sunflower
+        ..color = yellow
         ..style = PaintingStyle.stroke
-        ..strokeWidth = cell * 0.18
+        ..strokeWidth = cell * 0.16
         ..strokeCap = StrokeCap.round;
       final start = centerOf(winningLine.first);
       final end = centerOf(winningLine.last);
       canvas.drawLine(start, end, winPaint);
-      // обводка камней победной линии
       final ring = Paint()
-        ..color = AppColors.sunflower
+        ..color = yellow
         ..style = PaintingStyle.stroke
         ..strokeWidth = 3;
       for (final p in winningLine) {
-        canvas.drawCircle(centerOf(p), cell * 0.54, ring);
+        canvas.drawCircle(centerOf(p), cell * 0.48, ring);
       }
     }
   }
 
-  void _drawStone(Canvas canvas, Offset center, double radius, StoneColor color,
-      {required bool isLast}) {
+  void _drawStone(
+      Canvas canvas, Offset center, double radius, StoneColor color) {
     // тень
     canvas.drawCircle(
-        center.translate(1.5, 2.5),
-        radius,
-        Paint()..color = Colors.black.withOpacity(0.28));
+      center.translate(1.5, 2.5),
+      radius,
+      Paint()..color = Colors.black.withOpacity(0.28),
+    );
 
     // тело камня с радиальным градиентом (блик сверху-слева)
     final grad = RadialGradient(
       center: const Alignment(-0.35, -0.35),
       radius: 0.95,
       colors: color == StoneColor.black
-          ? const [AppColors.stoneBlackHi, AppColors.stoneBlack]
-          : const [Colors.white, AppColors.stoneWhite, AppColors.stoneWhiteEdge],
-      stops: color == StoneColor.black ? const [0.0, 1.0] : const [0.0, 0.7, 1.0],
+          ? const [stoneBlackHi, stoneBlack]
+          : const [Colors.white, stoneWhite, stoneWhiteEdge],
+      stops: color == StoneColor.black
+          ? const [0.0, 1.0]
+          : const [0.0, 0.7, 1.0],
     );
     final rect = Rect.fromCircle(center: center, radius: radius);
     canvas.drawCircle(
-        center,
-        radius,
-        Paint()..shader = grad.createShader(rect));
+        center, radius, Paint()..shader = grad.createShader(rect));
 
     // маленький блик-точка
     final hi = Paint()..color = Colors.white.withOpacity(0.55);
-    canvas.drawCircle(center.translate(-radius * 0.35, -radius * 0.35),
-        radius * 0.18, hi);
+    canvas.drawCircle(
+        center.translate(-radius * 0.35, -radius * 0.35),
+        radius * 0.18,
+        hi);
   }
 
   List<Point> _starPoints(int size) {

@@ -21,8 +21,6 @@ class GameController extends StateNotifier<GameState?> {
   final Ref _ref;
   StreamSubscription<NetworkMessage>? _netSub;
 
-  GameConfig? get _config => _ref.read(gameConfigProvider);
-
   /// Начать новую партию с конфигурацией [config].
   void startGame(GameConfig config) {
     _ref.read(gameConfigProvider.notifier).state = config;

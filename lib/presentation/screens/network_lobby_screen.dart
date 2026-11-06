@@ -9,9 +9,7 @@ import 'package:rendzu/presentation/providers/core_providers.dart';
 import 'package:rendzu/presentation/providers/game_provider.dart';
 import 'package:rendzu/presentation/providers/network_provider.dart';
 
-/// Экран лобби хоста: показывает код подключения, позволяет выбрать правила и
-/// размер доски, назначить цвета, готовность. При готовности обеих сторон —
-/// старт игры.
+/// Экран лобби хоста — наследует оформление «Шашек для Дианы».
 class NetworkLobbyScreen extends ConsumerStatefulWidget {
   const NetworkLobbyScreen({super.key});
 
@@ -34,7 +32,6 @@ class _NetworkLobbyScreenState extends ConsumerState<NetworkLobbyScreen> {
       final settings = ref.read(settingsServiceProvider);
       final name = settings?.playerName ?? 'Хост';
       await ref.read(networkServiceProvider.notifier).becomeHost(name);
-      // слушаем входящие сообщения
       _listenMessages();
     });
   }
@@ -47,8 +44,6 @@ class _NetworkLobbyScreenState extends ConsumerState<NetworkLobbyScreen> {
         case MessageType.hello:
           setState(() => _clientName = m.stringName ?? 'Гость');
           _broadcastLobby();
-          break;
-        case MessageType.undoResponse:
           break;
         case MessageType.ping:
           net.send(NetworkMessage.pong());
@@ -100,129 +95,139 @@ class _NetworkLobbyScreenState extends ConsumerState<NetworkLobbyScreen> {
   @override
   Widget build(BuildContext context) {
     final netState = ref.watch(networkServiceProvider);
-    return Scaffold(
-      appBar: AppBar(title: const Text('Создать игру')),
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            Card(
-              color: AppColors.sunflower.withOpacity(0.18),
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  children: [
-                    Text('Код подключения',
-                        style: Theme.of(context).textTheme.bodyMedium),
-                    const SizedBox(height: 8),
-                    Text(
-                      netState.connectCode.isEmpty
-                          ? '••••••'
-                          : _formatCode(netState.connectCode),
-                      style: const TextStyle(
-                        fontFamily: 'Baloo2',
-                        fontSize: 40,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 6,
-                        color: AppColors.coralDark,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      netState.status == NetworkStatus.waiting
-                          ? 'Ждём друга в одной Wi-Fi сети…'
-                          : netState.status == NetworkStatus.connected
-                              ? 'Друг подключился! 🎉'
-                              : 'Запуск сервера…',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                  ],
-                ),
-              ),
+    return PageFrame(
+      title: 'Создать игру',
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
+        children: [
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: yellow.withOpacity(.18),
+              borderRadius: BorderRadius.circular(22),
             ),
-            const SizedBox(height: 16),
-            Text('Правила и доска', style: Theme.of(context).textTheme.headlineSmall),
-            const SizedBox(height: 8),
-            _PickerRow(
+            child: Column(
+              children: [
+                const Text('Код подключения',
+                    style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w900,
+                        color: muted)),
+                const SizedBox(height: 8),
+                Text(
+                  netState.connectCode.isEmpty
+                      ? '••••••'
+                      : _formatCode(netState.connectCode),
+                  style: const TextStyle(
+                    fontSize: 38,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 6,
+                    color: deepPurple,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  netState.status == NetworkStatus.waiting
+                      ? 'Ждём друга в одной Wi-Fi сети…'
+                      : netState.status == NetworkStatus.connected
+                          ? 'Друг подключился! 🎉'
+                          : 'Запуск сервера…',
+                  style: const TextStyle(
+                      fontSize: 13, fontWeight: FontWeight.w700, color: muted),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          _PickerRow(
               label: 'Набор правил',
               value: _ruleset.russianName,
               onPrev: () => setState(() {
-                _ruleset = _ruleset == Ruleset.gomoku
-                    ? Ruleset.renju
-                    : Ruleset.gomoku;
-                _broadcastLobby();
-              }),
+                    _ruleset = _ruleset == Ruleset.gomoku
+                        ? Ruleset.renju
+                        : Ruleset.gomoku;
+                    _broadcastLobby();
+                  }),
               onNext: () => setState(() {
-                _ruleset = _ruleset == Ruleset.gomoku
-                    ? Ruleset.renju
-                    : Ruleset.gomoku;
-                _broadcastLobby();
-              }),
-            ),
-            _PickerRow(
+                    _ruleset = _ruleset == Ruleset.gomoku
+                        ? Ruleset.renju
+                        : Ruleset.gomoku;
+                    _broadcastLobby();
+                  })),
+          _PickerRow(
               label: 'Размер доски',
               value: _boardSize.russianName,
               onPrev: () => setState(() {
-                _boardSize = _boardSize == BoardSize.small9
-                    ? BoardSize.standard15
-                    : BoardSize.small9;
-                _broadcastLobby();
-              }),
+                    _boardSize = _boardSize == BoardSize.small9
+                        ? BoardSize.standard15
+                        : BoardSize.small9;
+                    _broadcastLobby();
+                  }),
               onNext: () => setState(() {
-                _boardSize = _boardSize == BoardSize.small9
-                    ? BoardSize.standard15
-                    : BoardSize.small9;
-                _broadcastLobby();
-              }),
-            ),
-            _PickerRow(
+                    _boardSize = _boardSize == BoardSize.small9
+                        ? BoardSize.standard15
+                        : BoardSize.small9;
+                    _broadcastLobby();
+                  })),
+          _PickerRow(
               label: 'Твой цвет',
               value: _hostIsBlack ? 'Чёрные (ходишь первым)' : 'Белые',
               onPrev: () => setState(() {
-                _hostIsBlack = !_hostIsBlack;
-                _broadcastLobby();
-              }),
+                    _hostIsBlack = !_hostIsBlack;
+                    _broadcastLobby();
+                  }),
               onNext: () => setState(() {
-                _hostIsBlack = !_hostIsBlack;
-                _broadcastLobby();
-              }),
+                    _hostIsBlack = !_hostIsBlack;
+                    _broadcastLobby();
+                  })),
+          const SizedBox(height: 12),
+          ListTile(
+            leading: Icon(
+                _hostReady ? Icons.check_circle_rounded : Icons.circle_outlined,
+                color: _hostReady ? purple : muted,
+                size: 30),
+            title: const Text('Ты готов',
+                style: TextStyle(fontWeight: FontWeight.w900, color: ink)),
+            onTap: () {
+              setState(() => _hostReady = !_hostReady);
+              _broadcastLobby();
+            },
+          ),
+          ListTile(
+            leading: Icon(
+                _clientReady ? Icons.check_circle_rounded : Icons.circle_outlined,
+                color: _clientReady ? purple : muted,
+                size: 30),
+            title: Text(
+                '${_clientName.isEmpty ? "Гость" : _clientName} готов',
+                style: const TextStyle(
+                    fontWeight: FontWeight.w900, color: ink)),
+          ),
+          const SizedBox(height: 16),
+          BigButton(
+            title: 'Начать игру',
+            icon: Icons.play_arrow_rounded,
+            onPressed: (_hostReady && _clientReady) ? _start : null,
+          ),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(
+              foregroundColor: ink,
+              backgroundColor: Colors.white,
+              side: const BorderSide(color: Color(0xFFE3D8F5)),
+              minimumSize: const Size.fromHeight(52),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(18)),
             ),
-            const SizedBox(height: 16),
-            ListTile(
-              leading: Icon(_hostReady ? Icons.check_circle : Icons.circle_outlined,
-                  color: _hostReady ? AppColors.grass : AppColors.textLight, size: 32),
-              title: const Text('Ты готов'),
-              onTap: () {
-                setState(() => _hostReady = !_hostReady);
-                _broadcastLobby();
-              },
-            ),
-            ListTile(
-              leading: Icon(
-                  _clientReady ? Icons.check_circle : Icons.circle_outlined,
-                  color: _clientReady ? AppColors.grass : AppColors.textLight,
-                  size: 32),
-              title: Text('${_clientName.isEmpty ? "Гость" : _clientName} готов'),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              icon: const Icon(Icons.play_arrow),
-              label: const Text('Начать игру'),
-              onPressed: (_hostReady && _clientReady)
-                  ? _start
-                  : null,
-            ),
-            const SizedBox(height: 12),
-            OutlinedButton.icon(
-              icon: const Icon(Icons.close),
-              label: const Text('Выйти'),
-              onPressed: () async {
-                await ref.read(networkServiceProvider.notifier).disposeService();
-                if (mounted) Navigator.of(context).pop();
-              },
-            ),
-          ],
-        ),
+            icon: const Icon(Icons.close_rounded),
+            label: const Text('Выйти',
+                style: TextStyle(fontWeight: FontWeight.w900)),
+            onPressed: () async {
+              await ref.read(networkServiceProvider.notifier).disposeService();
+              if (mounted) Navigator.of(context).pop();
+            },
+          ),
+        ],
       ),
     );
   }
@@ -256,12 +261,14 @@ class _PickerRow extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            child: Text(label, style: Theme.of(context).textTheme.bodyLarge),
+            child: Text(label,
+                style: const TextStyle(
+                    fontSize: 15, fontWeight: FontWeight.w900, color: ink)),
           ),
           IconButton(onPressed: onPrev, icon: const Icon(Icons.chevron_left)),
           Text(value,
               style: const TextStyle(
-                  fontFamily: 'Baloo2', fontWeight: FontWeight.w700)),
+                  fontSize: 15, fontWeight: FontWeight.w900, color: deepPurple)),
           IconButton(onPressed: onNext, icon: const Icon(Icons.chevron_right)),
         ],
       ),

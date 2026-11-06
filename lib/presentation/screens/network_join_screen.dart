@@ -9,7 +9,7 @@ import 'package:rendzu/presentation/providers/core_providers.dart';
 import 'package:rendzu/presentation/providers/game_provider.dart';
 import 'package:rendzu/presentation/providers/network_provider.dart';
 
-/// Экран подключения клиента: ввод кода или IP:порт, ожидание старта от хоста.
+/// Экран подключения клиента — наследует оформление «Шашек для Дианы».
 class NetworkJoinScreen extends ConsumerStatefulWidget {
   const NetworkJoinScreen({super.key});
 
@@ -46,12 +46,14 @@ class _NetworkJoinScreenState extends ConsumerState<NetworkJoinScreen> {
       _error = null;
     });
     final name = ref.read(settingsServiceProvider)?.playerName ?? 'Гость';
-    final ok = await ref.read(networkServiceProvider.notifier).connectByCode(name, code);
+    final ok = await ref
+        .read(networkServiceProvider.notifier)
+        .connectByCode(name, code);
     if (!mounted) return;
     if (!ok) {
       setState(() {
         _connecting = false;
-        _error = 'Не удалось найти игру. Проверь код и что вы в одной Wi-Fi сети.';
+        _error = 'Не удалось найти игру. Проверь код и общую Wi-Fi сеть.';
       });
       return;
     }
@@ -70,8 +72,9 @@ class _NetworkJoinScreenState extends ConsumerState<NetworkJoinScreen> {
       _error = null;
     });
     final name = ref.read(settingsServiceProvider)?.playerName ?? 'Гость';
-    final ok =
-        await ref.read(networkServiceProvider.notifier).connectAsClient(name, ip, port);
+    final ok = await ref
+        .read(networkServiceProvider.notifier)
+        .connectAsClient(name, ip, port);
     if (!mounted) return;
     if (!ok) {
       setState(() {
@@ -99,13 +102,11 @@ class _NetworkJoinScreenState extends ConsumerState<NetworkJoinScreen> {
           break;
         case MessageType.gameConfig:
           final cfg = GameConfig.fromJson(m.payload);
-          // клиент играет за противоположный цвет от humanColor хоста
           final clientCfg = cfg.copyWith(
             mode: GameMode.networkClient,
             humanColor: cfg.humanColor.opponent,
           );
-          ref.read(networkServiceProvider.notifier)
-              .setMyColor(clientCfg.humanColor);
+          ref.read(networkServiceProvider.notifier).setMyColor(clientCfg.humanColor);
           ref.read(gameConfigProvider.notifier).state = clientCfg;
           Navigator.of(context).pushReplacementNamed('/game');
           break;
@@ -121,13 +122,15 @@ class _NetworkJoinScreenState extends ConsumerState<NetworkJoinScreen> {
 
   void _toggleReady() {
     setState(() => _clientReady = !_clientReady);
-    // уведомим хост (через lobby-сообщение локально не отправим, т.к. хост
-    // инициатор lobby; клиент шлёт готовность через chat-пинг)
     final net = ref.read(networkServiceProvider.notifier);
     net.send(NetworkMessage.lobby(
       hostName: '',
       clientName: ref.read(settingsServiceProvider)?.playerName ?? 'Гость',
-      config: _receivedConfig ?? const GameConfig(ruleset: Ruleset.gomoku, boardSize: BoardSize.small9, mode: GameMode.networkClient),
+      config: _receivedConfig ??
+          const GameConfig(
+              ruleset: Ruleset.gomoku,
+              boardSize: BoardSize.small9,
+              mode: GameMode.networkClient),
       hostReady: _hostReady,
       clientReady: _clientReady,
     ));
@@ -136,146 +139,179 @@ class _NetworkJoinScreenState extends ConsumerState<NetworkJoinScreen> {
   @override
   Widget build(BuildContext context) {
     final netState = ref.watch(networkServiceProvider);
-    return Scaffold(
-      appBar: AppBar(title: const Text('Присоединиться')),
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            if (netState.isConnected && _receivedConfig != null) ...[
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Лобби',
-                          style: Theme.of(context).textTheme.headlineSmall),
-                      const SizedBox(height: 8),
-                      Text('Правила: ${_receivedConfig!.ruleset.russianName}'),
-                      Text('Доска: ${_receivedConfig!.boardSize.russianName}'),
-                      Text('Твой цвет: ${_receivedConfig!.humanColor.opponent.russianName}'),
-                      const SizedBox(height: 12),
-                      ListTile(
-                        leading: Icon(_hostReady ? Icons.check_circle : Icons.circle_outlined,
-                            color: _hostReady ? AppColors.grass : AppColors.textLight),
-                        title: const Text('Хост готов'),
+    return PageFrame(
+      title: 'Присоединиться',
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
+        children: [
+          if (netState.isConnected && _receivedConfig != null) ...[
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(.92),
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(color: const Color(0xFFF2EAE3)),
+                boxShadow: [
+                  BoxShadow(
+                    color: ink.withOpacity(.05),
+                    blurRadius: 18,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Лобби',
+                      style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                          color: ink)),
+                  const SizedBox(height: 8),
+                  Text('Правила: ${_receivedConfig!.ruleset.russianName}',
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w700, color: muted)),
+                  Text('Доска: ${_receivedConfig!.boardSize.russianName}',
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w700, color: muted)),
+                  Text(
+                      'Твой цвет: ${_receivedConfig!.humanColor.opponent.russianName}',
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w700, color: muted)),
+                  const SizedBox(height: 12),
+                  ListTile(
+                    leading: Icon(
+                        _hostReady ? Icons.check_circle_rounded : Icons.circle_outlined,
+                        color: _hostReady ? purple : muted),
+                    title: const Text('Хост готов',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w900, color: ink)),
+                  ),
+                  ListTile(
+                    leading: Icon(
+                        _clientReady ? Icons.check_circle_rounded : Icons.circle_outlined,
+                        color: _clientReady ? purple : muted),
+                    title: const Text('Ты готов',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w900, color: ink)),
+                    onTap: _toggleReady,
+                  ),
+                  const SizedBox(height: 8),
+                  const Text('Жди, когда хост начнёт игру…',
+                      style: TextStyle(
+                          fontWeight: FontWeight.w700, color: muted)),
+                ],
+              ),
+            ),
+          ] else ...[
+            const Intro(
+                eyebrow: 'ПО КОДУ ✦',
+                title: 'Введи код',
+                subtitle: 'Шесть символов от хоста — без 0/O/1/I.'),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _codeCtrl,
+              textCapitalization: TextCapitalization.characters,
+              decoration: InputDecoration(
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(18),
+                  borderSide: const BorderSide(color: Color(0xFFE3D8F5)),
+                ),
+                hintText: 'ABCDEF',
+                counterText: '',
+              ),
+              maxLength: 6,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 4,
+                  color: ink),
+            ),
+            const SizedBox(height: 12),
+            BigButton(
+              title: 'Подключиться по коду',
+              icon: Icons.link_rounded,
+              onPressed: _connecting ? null : _connectByCode,
+            ),
+            const SizedBox(height: 20),
+            const Intro(
+                eyebrow: 'ДЛЯ ВЗРОСЛЫХ ✦',
+                title: 'По IP:порту',
+                subtitle: 'Если код не находится — введи IP и порт хоста.'),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  flex: 2,
+                  child: TextField(
+                    controller: _ipCtrl,
+                    decoration: InputDecoration(
+                      labelText: 'IP',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(18),
+                        borderSide: const BorderSide(color: Color(0xFFE3D8F5)),
                       ),
-                      ListTile(
-                        leading: Icon(_clientReady ? Icons.check_circle : Icons.circle_outlined,
-                            color: _clientReady ? AppColors.grass : AppColors.textLight),
-                        title: const Text('Ты готов'),
-                        onTap: _toggleReady,
-                      ),
-                      const SizedBox(height: 8),
-                      const Text('Жди, когда хост начнёт игру…',
-                          style: TextStyle(color: AppColors.textMid)),
-                    ],
+                    ),
                   ),
                 ),
-              ),
-            ] else ...[
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('По коду',
-                          style: Theme.of(context).textTheme.headlineSmall),
-                      const SizedBox(height: 8),
-                      TextField(
-                        controller: _codeCtrl,
-                        textCapitalization: TextCapitalization.characters,
-                        decoration: const InputDecoration(
-                          hintText: 'ABCDEF',
-                          border: OutlineInputBorder(),
-                          counterText: '',
-                        ),
-                        maxLength: 6,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                            fontFamily: 'Baloo2',
-                            fontSize: 24,
-                            letterSpacing: 4),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextField(
+                    controller: _portCtrl,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: 'Порт',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(18),
+                        borderSide: const BorderSide(color: Color(0xFFE3D8F5)),
                       ),
-                      const SizedBox(height: 12),
-                      ElevatedButton.icon(
-                        icon: const Icon(Icons.link),
-                        label: const Text('Подключиться по коду'),
-                        onPressed: _connecting ? null : _connectByCode,
-                      ),
-                    ],
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('По IP:порту (для взрослых)',
-                          style: Theme.of(context).textTheme.headlineSmall),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Expanded(
-                            flex: 2,
-                            child: TextField(
-                              controller: _ipCtrl,
-                              decoration: const InputDecoration(
-                                labelText: 'IP',
-                                border: OutlineInputBorder(),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: TextField(
-                              controller: _portCtrl,
-                              keyboardType: TextInputType.number,
-                              decoration: const InputDecoration(
-                                labelText: 'Порт',
-                                border: OutlineInputBorder(),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.sky),
-                        icon: const Icon(Icons.wifi),
-                        label: const Text('Подключиться по IP'),
-                        onPressed: _connecting ? null : _connectByIp,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-            if (_error != null) ...[
-              const SizedBox(height: 16),
-              Text(_error!, style: const TextStyle(color: AppColors.coralDark)),
-            ],
-            if (_connecting) ...[
-              const SizedBox(height: 16),
-              const Center(child: CircularProgressIndicator()),
-            ],
-            const SizedBox(height: 16),
-            OutlinedButton.icon(
-              icon: const Icon(Icons.close),
-              label: const Text('Назад'),
-              onPressed: () async {
-                await ref.read(networkServiceProvider.notifier).disposeService();
-                if (mounted) Navigator.of(context).pop();
-              },
+              ],
+            ),
+            const SizedBox(height: 12),
+            BigButton(
+              title: 'Подключиться по IP',
+              icon: Icons.wifi_rounded,
+              color: const Color(0xFF6047AF),
+              onPressed: _connecting ? null : _connectByIp,
             ),
           ],
-        ),
+          if (_error != null) ...[
+            const SizedBox(height: 16),
+            Text(_error!,
+                style: const TextStyle(
+                    color: Color(0xFFE27D60), fontWeight: FontWeight.w800)),
+          ],
+          if (_connecting) ...[
+            const SizedBox(height: 16),
+            Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation(purple.withOpacity(.6)),
+              ),
+            ),
+          ],
+          const SizedBox(height: 20),
+          OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(
+              foregroundColor: ink,
+              backgroundColor: Colors.white,
+              side: const BorderSide(color: Color(0xFFE3D8F5)),
+              minimumSize: const Size.fromHeight(52),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(18)),
+            ),
+            icon: const Icon(Icons.arrow_back_rounded),
+            label: const Text('Назад',
+                style: TextStyle(fontWeight: FontWeight.w900)),
+            onPressed: () async {
+              await ref.read(networkServiceProvider.notifier).disposeService();
+              if (mounted) Navigator.of(context).pop();
+            },
+          ),
+        ],
       ),
     );
   }

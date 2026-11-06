@@ -6,8 +6,7 @@ import 'package:rendzu/domain/models/point.dart';
 import 'package:rendzu/presentation/providers/core_providers.dart';
 import 'package:rendzu/presentation/providers/game_provider.dart';
 
-/// Экран настроек: выбираем набор правил, размер доски, уровень ИИ, цвет,
-/// подсказки, звук, имя игрока. Отсюда же запускаем игру.
+/// Экран настроек и запуска партии — наследует оформление «Шашек для Дианы».
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
 
@@ -63,139 +62,91 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     s.hintsEnabled = _hints;
     s.patternHighlight = _pattern;
     s.soundEnabled = _sound;
-    s.playerName = _nameCtrl.text.trim().isEmpty
-        ? 'Игрок'
-        : _nameCtrl.text.trim();
+    s.playerName =
+        _nameCtrl.text.trim().isEmpty ? 'Игрок' : _nameCtrl.text.trim();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Настройки')),
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            _SectionTitle('Набор правил'),
-            _ChoiceRow<Ruleset>(
-              value: _ruleset,
-              values: Ruleset.values,
-              label: (r) => r.russianName,
-              onChanged: (v) => setState(() => _ruleset = v),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              child: Text(_ruleset.russianDescription,
-                  style: Theme.of(context).textTheme.bodyMedium),
-            ),
-            const SizedBox(height: 12),
-            _SectionTitle('Размер доски'),
-            _ChoiceRow<BoardSize>(
-              value: _boardSize,
-              values: BoardSize.values,
-              label: (b) => b.russianName,
-              onChanged: (v) => setState(() => _boardSize = v),
-            ),
-            const SizedBox(height: 12),
-            _SectionTitle('Уровень компьютера'),
-            _ChoiceRow<Difficulty>(
-              value: _difficulty,
-              values: Difficulty.values,
-              label: (d) => d.russianName,
-              onChanged: (v) => setState(() => _difficulty = v),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              child: Text(_difficulty.russianDescription,
-                  style: Theme.of(context).textTheme.bodyMedium),
-            ),
-            const SizedBox(height: 12),
-            _SectionTitle('Твой цвет (против компьютера)'),
-            _ChoiceRow<StoneColor>(
-              value: _humanColor,
-              values: StoneColor.values,
-              label: (c) => c.russianName,
-              onChanged: (v) => setState(() => _humanColor = v),
-            ),
-            const SizedBox(height: 12),
-            _SectionTitle('Помощь и звук'),
-            _SwitchTile(
-              title: 'Подсказки возможных ходов',
-              value: _hints,
-              onChanged: (v) => setState(() => _hints = v),
-            ),
-            _SwitchTile(
-              title: 'Подсветка троек и четвёрок',
-              value: _pattern,
-              onChanged: (v) => setState(() => _pattern = v),
-            ),
-            _SwitchTile(
-              title: 'Звук',
-              value: _sound,
-              onChanged: (v) => setState(() => _sound = v),
-            ),
-            const SizedBox(height: 12),
-            _SectionTitle('Имя игрока'),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: TextField(
-                controller: _nameCtrl,
-                decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
-                  hintText: 'Введи имя',
+    return PageFrame(
+      title: 'Настройки',
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
+        children: [
+          const Intro(
+              eyebrow: 'ПАРТИЯ ✦',
+              title: 'Выбери правила',
+              subtitle: 'Гомоку — проще, рэндзю — с запретами для чёрных.'),
+          const SizedBox(height: 18),
+          _Section('Набор правил'),
+          _ChoiceRow(_ruleset, Ruleset.values, (r) => r.russianName,
+              (v) => setState(() => _ruleset = v)),
+          _Hint(_ruleset.russianDescription),
+          _Section('Размер доски'),
+          _ChoiceRow(_boardSize, BoardSize.values, (b) => b.russianName,
+              (v) => setState(() => _boardSize = v)),
+          _Section('Уровень компьютера'),
+          _ChoiceRow(_difficulty, Difficulty.values, (d) => d.russianName,
+              (v) => setState(() => _difficulty = v)),
+          _Hint(_difficulty.russianDescription),
+          _Section('Твой цвет (против компьютера)'),
+          _ChoiceRow(_humanColor, StoneColor.values, (c) => c.russianName,
+              (v) => setState(() => _humanColor = v)),
+          _Section('Помощь и звук'),
+          _SwitchTile('Подсказки возможных ходов', _hints,
+              (v) => setState(() => _hints = v)),
+          _SwitchTile('Подсветка троек и четвёрок', _pattern,
+              (v) => setState(() => _pattern = v)),
+          _SwitchTile(
+              'Звук', _sound, (v) => setState(() => _sound = v)),
+          _Section('Имя игрока'),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: TextField(
+              controller: _nameCtrl,
+              decoration: InputDecoration(
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(18),
+                  borderSide: const BorderSide(color: Color(0xFFE3D8F5)),
                 ),
+                hintText: 'Введи имя',
               ),
             ),
-            const SizedBox(height: 24),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 12),
-                      textStyle: const TextStyle(
-                          fontFamily: 'Baloo2',
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700),
-                    ),
-                    icon: const Icon(Icons.computer, size: 22),
-                    label: const Text('С компьютером'),
-                    onPressed: () => _start(GameMode.vsComputer),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.sky,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 12),
-                      textStyle: const TextStyle(
-                          fontFamily: 'Baloo2',
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700),
-                    ),
-                    icon: const Icon(Icons.people, size: 22),
-                    label: const Text('Двое'),
-                    onPressed: () => _start(GameMode.localTwoPlayers),
-                  ),
-                ),
-              ],
+          ),
+          const SizedBox(height: 22),
+          BigButton(
+            title: 'Играть с компьютером',
+            icon: Icons.play_arrow_rounded,
+            onPressed: () => _start(GameMode.vsComputer),
+          ),
+          const SizedBox(height: 12),
+          BigButton(
+            title: 'Два игрока',
+            icon: Icons.people_rounded,
+            color: const Color(0xFF6047AF),
+            onPressed: () => _start(GameMode.localTwoPlayers),
+          ),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(
+              foregroundColor: ink,
+              backgroundColor: Colors.white,
+              side: const BorderSide(color: Color(0xFFE3D8F5)),
+              minimumSize: const Size.fromHeight(52),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(18)),
             ),
-            const SizedBox(height: 12),
-            OutlinedButton.icon(
-              icon: const Icon(Icons.save),
-              label: const Text('Сохранить настройки'),
-              onPressed: () {
-                _persist();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Настройки сохранены!')),
-                );
-              },
-            ),
-          ],
-        ),
+            icon: const Icon(Icons.save_rounded),
+            label: const Text('Сохранить настройки',
+                style: TextStyle(fontWeight: FontWeight.w900)),
+            onPressed: () {
+              _persist();
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Настройки сохранены!')),
+              );
+            },
+          ),
+        ],
       ),
     );
   }
@@ -221,25 +172,32 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 }
 
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle(this.text);
+class _Section extends StatelessWidget {
+  const _Section(this.text);
   final String text;
   @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 8, bottom: 8),
-      child: Text(text, style: Theme.of(context).textTheme.titleLarge),
-    );
-  }
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.fromLTRB(4, 18, 0, 8),
+        child: Text(text,
+            style: const TextStyle(
+                fontSize: 15, fontWeight: FontWeight.w900, color: ink)),
+      );
+}
+
+class _Hint extends StatelessWidget {
+  const _Hint(this.text);
+  final String text;
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.fromLTRB(4, 2, 8, 0),
+        child: Text(text,
+            style: const TextStyle(
+                fontSize: 12, height: 1.3, fontWeight: FontWeight.w700, color: muted)),
+      );
 }
 
 class _ChoiceRow<T> extends StatelessWidget {
-  const _ChoiceRow({
-    required this.value,
-    required this.values,
-    required this.label,
-    required this.onChanged,
-  });
+  const _ChoiceRow(this.value, this.values, this.label, this.onChanged);
   final T value;
   final List<T> values;
   final String Function(T) label;
@@ -256,16 +214,16 @@ class _ChoiceRow<T> extends StatelessWidget {
           label: Text(label(v)),
           selected: selected,
           onSelected: (_) => onChanged(v),
-          selectedColor: AppColors.coral.withOpacity(0.25),
+          selectedColor: purple.withOpacity(.18),
           labelStyle: TextStyle(
-            fontFamily: 'Baloo2',
-            fontWeight: FontWeight.w700,
-            color: selected ? AppColors.coralDark : AppColors.textMid,
+            fontFamily: 'Nunito',
+            fontWeight: FontWeight.w900,
+            color: selected ? purple : muted,
           ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
             side: BorderSide(
-              color: selected ? AppColors.coral : AppColors.textLight,
+              color: selected ? purple : const Color(0xFFE3D8F5),
               width: selected ? 2 : 1,
             ),
           ),
@@ -276,22 +234,19 @@ class _ChoiceRow<T> extends StatelessWidget {
 }
 
 class _SwitchTile extends StatelessWidget {
-  const _SwitchTile({
-    required this.title,
-    required this.value,
-    required this.onChanged,
-  });
+  const _SwitchTile(this.title, this.value, this.onChanged);
   final String title;
   final bool value;
   final void Function(bool) onChanged;
 
   @override
-  Widget build(BuildContext context) {
-    return SwitchListTile(
-      title: Text(title),
-      value: value,
-      onChanged: onChanged,
-      activeColor: AppColors.coral,
-    );
-  }
+  Widget build(BuildContext context) => SwitchListTile(
+        title: Text(title,
+            style: const TextStyle(
+                fontSize: 15, fontWeight: FontWeight.w800, color: ink)),
+        value: value,
+        onChanged: onChanged,
+        activeColor: purple,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+      );
 }

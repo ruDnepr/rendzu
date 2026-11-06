@@ -1,2 +1,38 @@
+# Flutter / Dart
+build/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+pubspec.lock
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# Platform
+android/.gradle/
+android/captures/
+android/local.properties
+android/key.properties
+ios/Pods/
+ios/.symlinks/
+linux/flutter/
+macos/Flutter/
+windows/flutter/
+
+# Environment
+.env
+
+# Skills (внутренние)
 skills/
 node_modules/
+
+# OS
+.DS_Store
+Thumbs.db

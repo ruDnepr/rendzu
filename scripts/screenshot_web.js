@@ -11,7 +11,7 @@ const { chromium } = require('playwright');
   });
   const page = await ctx.newPage();
   const base = 'http://localhost:8765/';
-  const out = '/tmp/render';
+  const out = 'download/screens';
   const fs = require('fs');
   fs.mkdirSync(out, { recursive: true });
 

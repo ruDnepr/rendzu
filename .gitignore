@@ -39,3 +39,4 @@ Thumbs.db
 tool-results/
 download/*.apk
 download/rendzu-debug.apk
+download/screens/*.png
